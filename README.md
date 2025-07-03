@@ -1,4 +1,4 @@
-# ADBnectar
+# ADBNectar
 A WIP fork of [ADBHoney]("https://github.com/huuck/ADBHoney"). Medium interaction ADB honeypot designed for Android Debug Bridge over TCP/IP.
 
 ## What's this?
@@ -25,23 +25,20 @@ Responses to shell commands can easily be added by editing the `adbnectar\respon
 More niche commands or truly interactive commands will not work at this time. Down the road, I may look into running a small lanaguage model >1b locally on CPU to generate on-the-fly realistic responses if needed.
 
 # OK OK, how do I get it started?
-Just start the script in python:
 
-`nohup python3 run.py &`
-
-Just like that, shouldn't have any more complex dependencies.
+1. Download Python 3.12 for your OS and CPU architecture
+2. Download and extract this repo or clone it.
+3. Navigate to the extracted repo and run `pip install -r requirements.txt` from a terminal or CMD.
+4. Run `python run.py`
 
 **The config file `adbnectar.cfg` must be in the same directory as run.py or at `/etc/adbnectar.cfg`**
 
-Or give the docker container a try, easiest with docker-compose:
+For security and ease of use however, I recommend building the Docker image and running a container.
 
-`docker-compose up --build -d` 
+1. Install Docker CE for your OS and CPU architecture
+2. Run `docker build -t adbnectar:latest .` from a terminal or CMD.
+3. Run `docker run --name adbnectar --rm -p 5555:5555 -v $(pwd)/adbnectar.cfg:/etc/adbnectar.cfg adbnectar:latest` 
 
-or without docker compose
-
-`docker build -t adbnectar:latest .`
-
-`docker run --name adbnectar --rm -p 5555:5555 -v $(pwd)/adbnectar.cfg:/etc/adbnectar.cfg adbnectar:latest`
 
 You will probably want to save uploads and logs to the host machine, so add these volumes to the run command above `-v $(pwd)/dl:/adbnectar/dl -v $(pwd)/logs:/adbnectar/logs`
 
