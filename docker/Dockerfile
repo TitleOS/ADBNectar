@@ -8,4 +8,6 @@ WORKDIR /ADBNectar
 COPY entrypoint.sh /
 RUN chmod +x /entrypoint.sh
 
+EXPOSE 5555
+
 ENTRYPOINT ["/entrypoint.sh"]

@@ -178,7 +178,7 @@ class ADBConnection(threading.Thread):
         
     def generate_network_delay(self):
         #Generate a random network delay between 0 and MAX_SIMULATED_NETWORK_DELAY_IN_SECONDS seconds.
-        return random.uniform(0, MAX_SIMULATED_NETWORK_DELAY_IN_SECONDS)
+        return random.uniform(0, MAX_SIMULATED_NETWORK_DELAY_IN_SECONDS + 1)
 
     def report(self, obj):
         obj['timestamp'] = datetime.utcnow().isoformat() + 'Z'
@@ -274,9 +274,11 @@ class ADBConnection(threading.Thread):
 
     def dump_file(self, f):
         DL_DIR = CONFIG.get('honeypot', 'download_dir')
+        S_DIR = f'{datetime.now():%Y-%m-%d_%H-%M-%S}' # Subdirectory for the current session
         if DL_DIR and not os.path.exists(DL_DIR):
             os.makedirs(DL_DIR)
-
+        if S_DIR and not os.path.exists(os.path.join(DL_DIR, S_DIR)):
+            os.makedirs(os.path.join(DL_DIR, S_DIR))
         sha256sum = hashlib.sha256(f['data']).hexdigest()
         fn = '{}.raw'.format(sha256sum)
         fp = os.path.join(DL_DIR, fn)
@@ -293,6 +295,7 @@ class ADBConnection(threading.Thread):
         if not os.path.exists(fp):
             with open(fp, 'wb') as file_out:
                 file_out.write(f['data'])
+                
 
     def recv_binary_chunk(self, message, data, f):
         if len(message.data) == 0:
@@ -368,7 +371,7 @@ class ADBConnection(threading.Thread):
         if cmd in cmd_responses:
             response = cmd_responses[cmd]
         else:
-            response = ""
+            response = f"{cmd}: command not found" # Fake the default response for unknown commands in the case of lacking implementation.
 
         # change the WRTE contents with whatever you'd like to send to the attacker
         self.send_message(protocol.CMD_WRTE, 2, message.arg0, response)
