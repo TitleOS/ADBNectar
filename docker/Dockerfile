@@ -7,8 +7,8 @@ RUN git clone https://github.com/TitleOS/ADBNectar.git
 WORKDIR /ADBNectar
 COPY entrypoint.sh /entrypoint.sh
 COPY adbnectar.cfg /adbnectar.cfg 
-RUN chmod +x /entrypoint.sh
+RUN chmod +x entrypoint.sh
 
 EXPOSE 5555
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["entrypoint.sh"]
