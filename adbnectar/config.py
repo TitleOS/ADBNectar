@@ -29,7 +29,7 @@ def get_output_plugins(config):
 
 def get_config():
     cfg_file = None
-    cfg_locations = ['/etc/adbhoney.cfg', 'adbhoney.cfg']
+    cfg_locations = ['/etc/adbnectar.cfg', 'adbnectar.cfg', 'C:\\ProgramData\\ADBNectar\\adbnectar.cfg']
     for l in cfg_locations:
         if os.path.exists(l):
             cfg_file = l

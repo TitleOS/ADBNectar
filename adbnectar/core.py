@@ -11,6 +11,7 @@ import struct
 import queue as Queue
 import json
 import time
+import random
 import re
 import sys
 import os
@@ -29,7 +30,10 @@ __version__ = '1.00'
 MAX_READ_COUNT = 4096 * 4096
 # sleep 1 second after each empty packets, wait 1 hour in total
 MAX_EMPTY_PACKETS = 360
+MAX_SIMULATED_NETWORK_DELAY_IN_SECONDS = 10 # How many seconds to be used as the max for the random generator when simulating network delay.
 IDLE_TIMEOUT = 300 # seconds
+
+HTTP_USER_AGENT = CONFIG.get('honeypot', 'http_useragent')
 
 DEVICE_ID = CONFIG.get('honeypot', 'device_id')
 log_q = Queue.Queue()
@@ -59,11 +63,19 @@ logger = OutputLogger(log_q)
 
 
 class UrlDownloader(threading.Thread):
+    
     def __init__(self):
         logger.debug("Creating UrlDownloader!")
         threading.Thread.__init__(self)
         self.session = requests.session()
-        self.session.headers.update({'User-Agent': 'curl/7.73.0'})
+        self.session.headers.update({'User-Agent': HTTP_USER_AGENT})
+        if(CONFIG.get('honeypot', 'http_proxy', fallback='') != ''):
+            proxy = CONFIG.get('honeypot', 'http_proxy')
+            logger.debug(f"Using HTTP Proxy: {proxy}")
+            self.session.proxies.update({
+                'http': proxy,
+                'https': proxy
+            })
         self.process = True
 
     def run(self):
@@ -78,7 +90,7 @@ class UrlDownloader(threading.Thread):
                 filename = os.path.basename(urlparse(url).path)
             except Queue.Empty:
                 continue
-
+            
             try:
                 response = self.session.get(url, timeout=HTTP_TIMEOUT)
             except (OSError, RequestException):
@@ -94,7 +106,7 @@ class UrlDownloader(threading.Thread):
 
             logger.info('File downloaded: {}, name: {}, bytes: {}'.format(fp, filename, len(data)))
             obj = {
-                "eventid": "adbhoney.session.file_download",
+                "eventid": "adbnectar.session.file_download",
                 "src_url": url,
                 "shasum": sha256sum,
                 "outfile": fp,
@@ -126,7 +138,7 @@ class OutputWriter(threading.Thread):
         self.process = True
         self.output_writers = []
         for output in OUTPUT_PLUGINS:
-            output_writer = __import__('adbhoney.outputs.{}'\
+            output_writer = __import__('adbnectar.outputs.{}'\
                     .format(output), globals(), locals(), ['output']).Output()
             self.output_writers.append(output_writer)
 
@@ -163,6 +175,10 @@ class ADBConnection(threading.Thread):
         self.http_download = CONFIG.getboolean('honeypot','http_download', fallback=False)
         self.url_regex = re.compile(r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))")
         self.run()
+        
+    def generate_network_delay(self):
+        #Generate a random network delay between 0 and MAX_SIMULATED_NETWORK_DELAY_IN_SECONDS seconds.
+        return random.uniform(0, MAX_SIMULATED_NETWORK_DELAY_IN_SECONDS)
 
     def report(self, obj):
         obj['timestamp'] = datetime.utcnow().isoformat() + 'Z'
@@ -177,6 +193,11 @@ class ADBConnection(threading.Thread):
         self.process_connection()
 
     def send_message(self, command, arg0, arg1, data):
+        if(CONFIG.getboolean('honeypot', 'simulate_network_delay', fallback=False)):
+            # Simulate network delay if configured
+            delay = self.generate_network_delay()
+            logger.debug(f"Simulating network delay of {delay:.2f} seconds for command {command}")
+            time.sleep(delay)
         newmessage = protocol.AdbMessage(command, arg0, arg1, data)
         logger.debug('sending: {}'.format(newmessage))
         self.conn.sendall(newmessage.encode())
@@ -261,7 +282,7 @@ class ADBConnection(threading.Thread):
         fp = os.path.join(DL_DIR, fn)
         logger.info('File uploaded: {}, name: {}, bytes: {}'.format(fp, f['name'], len(f['data'])))
         obj = {
-            "eventid": "adbhoney.session.file_upload",
+            "eventid": "adbnectar.session.file_upload",
             "src_ip": self.addr[0],
             "shasum": sha256sum,
             "outfile": fp,
@@ -356,7 +377,7 @@ class ADBConnection(threading.Thread):
         # also remove trailing \00
         logger.info('{}\t{}'.format(self.addr[0], message.data[:-1]))
         obj = {
-            "eventid": "adbhoney.command.input",
+            "eventid": "adbnectar.command.input",
             "input": cmd,
             "src_ip": self.addr[0],
         }
@@ -371,7 +392,7 @@ class ADBConnection(threading.Thread):
         localip = socket.gethostbyname(socket.gethostname())
         logger.info('{} connection start ({})'.format(self.addr[0], self.session))
         obj = {
-            "eventid": "adbhoney.session.connect",
+            "eventid": "adbnectar.session.connect",
             "src_ip": self.addr[0],
             "src_port": self.addr[1],
             "dst_ip": localip,
@@ -471,14 +492,14 @@ class ADBConnection(threading.Thread):
         duration = time.time() - start
         logger.info('{}\t{}\tconnection closed'.format(duration, self.addr[0]))
         obj = {
-            'eventid': 'adbhoney.session.closed',
+            'eventid': 'adbnectar.session.closed',
             'src_ip': self.addr[0],
             'duration': '{0:.2f}'.format(duration),
         }
         self.report(obj)
         self.conn.close()
 
-class ADBHoneyPot:
+class adbnectarPot:
     def __init__(self):
         self.bind_addr = CONFIG.get('honeypot', 'address')
         self.bind_port = int(CONFIG.get('honeypot', 'port'))
@@ -532,12 +553,12 @@ def main():
     parser = ArgumentParser()
 
     parser.add_argument('-v', '--version', action='version', version="%(prog)s" + __version__)
-    parser.add_argument('-a', '--addr', type=str, default=None, help='Address to bind to')
-    parser.add_argument('-p', '--port', type=int, default=None, help='Port to listen on')
-    parser.add_argument('-d', '--dlfolder', type=str, default=None, help='Directory for the uploaded samples (default: current)')
-    parser.add_argument('-l', '--logfile', type=str, default=None, help='Log file (default: adbhoney.log')
+    parser.add_argument('-a', '--addr', type=str, default="0.0.0.0", help='Address to bind to')
+    parser.add_argument('-p', '--port', type=int, default=5555, help='Port to listen on (default: 5555)')
+    parser.add_argument('-d', '--dlfolder', type=str, default="captured_samples", help='Directory for the uploaded samples (default: current)')
+    parser.add_argument('-l', '--logfile', type=str, default="adbnectar.log", help='Log file (default: adbnectar.log')
     parser.add_argument('-j', '--jsonlog', type=str, default=None, help='JSON log file')
-    parser.add_argument('-s', '--sensor', type=str, default=None, help='Sensor/Host name')
+    parser.add_argument('-hn', '--hostname', type=str, default="Loki", help='Sensor/Host name')
 
     args = parser.parse_args()
 
@@ -546,7 +567,7 @@ def main():
     if args.port:
         CONFIG.set('honeypot', 'port', str(args.port))
     if args.dlfolder:
-        CONFIG.set('honeypot', 'download_dir', str(args.port))
+        CONFIG.set('honeypot', 'download_dir', str(args.dlfolder))
     if args.logfile:
         CONFIG.set('honeypot', 'log_file', args.logfile)
     if args.jsonlog:
@@ -563,7 +584,7 @@ def main():
 
     logger.info("Configuration loaded with {} as output plugins".format(OUTPUT_PLUGINS))
 
-    honeypot = ADBHoneyPot()
+    honeypot = adbnectarPot()
     honeypot.accept_connections()
 
 if __name__ == '__main__':

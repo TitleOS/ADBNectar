@@ -1,5 +1,5 @@
 #!/usr/local/bin/python3.12
 
-import adbhoney
+import adbnectar
 
-adbhoney.main()
+adbnectar.main()
