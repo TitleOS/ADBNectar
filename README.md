@@ -1,4 +1,4 @@
-# ADBNector
+# ADBnectar
 A WIP fork of [ADBHoney]("https://github.com/huuck/ADBHoney"). Medium interaction ADB honeypot designed for Android Debug Bridge over TCP/IP.
 
 ## What's this?
@@ -19,7 +19,7 @@ As of July 2025, a simple Shodan search query for product:”Android Debug Bridg
 ## What works?"
 Right now you can `adb connect`, `adb push` and `adb shell` into it. All of the data is redirected to stdout and files will be saved to disk. CPU/memory usage should be fairly low, any anormalities should be reported so they can be investigated.
 
-Responses to shell commands can easily be added by editing the `adbnector\responses.py` file, a number of common commands have hardcoded responses, including a faked build.prop and other phone infomation to make it more difficult for the attacker to determine they are connected to a honeypot. All other commands will respond with `command not found`.
+Responses to shell commands can easily be added by editing the `adbnectar\responses.py` file, a number of common commands have hardcoded responses, including a faked build.prop and other phone infomation to make it more difficult for the attacker to determine they are connected to a honeypot. All other commands will respond with `command not found`.
 
 ## What doesn't work?
 More niche commands or truly interactive commands will not work at this time. Down the road, I may look into running a small lanaguage model >1b locally on CPU to generate on-the-fly realistic responses if needed.
@@ -31,7 +31,7 @@ Just start the script in python:
 
 Just like that, shouldn't have any more complex dependencies.
 
-**The config file `adbnector.cfg` must be in the same directory as run.py or at `/etc/adbnector.cfg`**
+**The config file `adbnectar.cfg` must be in the same directory as run.py or at `/etc/adbnectar.cfg`**
 
 Or give the docker container a try, easiest with docker-compose:
 
@@ -39,12 +39,16 @@ Or give the docker container a try, easiest with docker-compose:
 
 or without docker compose
 
-`docker build -t adbnector:latest .`
+`docker build -t adbnectar:latest .`
 
-`docker run --name adbnector --rm -p 5555:5555 -v $(pwd)/adbnector.cfg:/etc/adbnector.cfg adbnector:latest`
+`docker run --name adbnectar --rm -p 5555:5555 -v $(pwd)/adbnectar.cfg:/etc/adbnectar.cfg adbnectar:latest`
 
-You will probably want to save uploads and logs to the host machine, so add these volumes to the run command above `-v $(pwd)/dl:/adbnector/dl -v $(pwd)/logs:/adbnector/logs`
+You will probably want to save uploads and logs to the host machine, so add these volumes to the run command above `-v $(pwd)/dl:/adbnectar/dl -v $(pwd)/logs:/adbnectar/logs`
+
+## License
+This software fork originates from ADBHoney, and thus inherits and also is provided under the terms of the GNU GPL License.
+Unmodified ADBHoney source code is copyright of [@huuck]("https://github.com/huuck").
 
 ## Credits
 
-Massive props to [ADBHoney]("https://github.com/huuck/ADBHoney") by [@huuck]("https://twitter.com/hookgab"), the original project that ADBNector is a fork of.
+Massive props to [ADBHoney]("https://github.com/huuck/ADBHoney") by [@huuck]("https://twitter.com/hookgab"), the original project that ADBnectar is a fork of.
