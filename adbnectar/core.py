@@ -83,7 +83,7 @@ class UrlDownloader(threading.Thread):
         DL_DIR = CONFIG.get('honeypot', 'download_dir')
         HTTP_TIMEOUT = CONFIG.getint('honeypot', 'http_timeout', fallback=45)
         if DL_DIR and not os.path.exists(DL_DIR):
-            os.makedirs(DL_DIR)
+            os.makedirs(DL_DIR) 
         while not download_q.empty() or self.process:
             try:
                 url, session = download_q.get(timeout=.1)
@@ -274,11 +274,8 @@ class ADBConnection(threading.Thread):
 
     def dump_file(self, f):
         DL_DIR = CONFIG.get('honeypot', 'download_dir')
-        S_DIR = f'{datetime.now():%Y-%m-%d_%H-%M-%S}' # Subdirectory for the current session
         if DL_DIR and not os.path.exists(DL_DIR):
             os.makedirs(DL_DIR)
-        if S_DIR and not os.path.exists(os.path.join(DL_DIR, S_DIR)):
-            os.makedirs(os.path.join(DL_DIR, S_DIR))
         sha256sum = hashlib.sha256(f['data']).hexdigest()
         fn = '{}.raw'.format(sha256sum)
         fp = os.path.join(DL_DIR, fn)
