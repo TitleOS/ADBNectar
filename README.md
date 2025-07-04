@@ -39,8 +39,12 @@ For security and ease of use however, I recommend building the Docker image and 
 2. Run `docker build -t adbnectar:latest .` from a terminal or CMD.
 3. Run `docker run --name adbnectar --rm -p 5555:5555 -v $(pwd)/adbnectar.cfg:/etc/adbnectar.cfg adbnectar:latest` 
 
-
 You will probably want to save uploads and logs to the host machine, so add these volumes to the run command above `-v $(pwd)/dl:/adbnectar/dl -v $(pwd)/logs:/adbnectar/logs`
+
+## Automatically submitting file samples to VirusTotal
+
+
+
 
 ## License
 This software fork originates from ADBHoney, and thus inherits and also is provided under the terms of the GNU GPL License.

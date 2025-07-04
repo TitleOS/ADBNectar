@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from argparse import ArgumentParser
-from datetime import datetime
+from datetime import datetime, timezone
 import threading
 import binascii
 import hashlib
@@ -82,6 +82,7 @@ class UrlDownloader(threading.Thread):
         logger.debug("Starting UrlDownloader!")
         DL_DIR = CONFIG.get('honeypot', 'download_dir')
         HTTP_TIMEOUT = CONFIG.getint('honeypot', 'http_timeout', fallback=45)
+        USE_VT = CONFIG.getboolean('virustotal', 'submit_files_to_VT', fallback=False)
         if DL_DIR and not os.path.exists(DL_DIR):
             os.makedirs(DL_DIR) 
         while not download_q.empty() or self.process:
@@ -90,7 +91,6 @@ class UrlDownloader(threading.Thread):
                 filename = os.path.basename(urlparse(url).path)
             except Queue.Empty:
                 continue
-            
             try:
                 response = self.session.get(url, timeout=HTTP_TIMEOUT)
             except (OSError, RequestException):
@@ -120,12 +120,24 @@ class UrlDownloader(threading.Thread):
                     file_out.flush()
             #Report on downloaded file after write and close.
             self.report(obj)
+            
+            if(USE_VT):
+                # If the key isn't defined in the config, check the environment variable.
+                VT_API_KEY = CONFIG.get('virustotal', 'api_key', fallback=os.environ.get('VIRUSTOTAL_API_KEY', None))
+                if VT_API_KEY:
+                    try:
+                        vt_response = outputs.submit_sample_to_VT(fp, VT_API_KEY)
+                        logger.info(f"VirusTotal response for {filename}({sha256sum}): {vt_response}")
+                    except Exception as e:
+                        logger.error(f"Failed to submit {filename}({sha256sum}) to VirusTotal: {e}")
+                else:
+                    logger.warning(f"VirusTotal API key is not set, skipping submission of {filename}({sha256sum}).")
 
     def stop(self):
         self.process = False
 
     def report(self, obj):
-        obj['timestamp'] = datetime.utcnow().isoformat() + 'Z'
+        obj['timestamp'] = datetime.now(timezone.utc).isoformat() + 'Z'
         obj['unixtime'] = int(time.time())
         obj['sensor'] = CONFIG.get('honeypot', 'hostname')
         logger.debug("Placing {} on log_q".format(obj))
@@ -269,7 +281,7 @@ class ADBConnection(threading.Thread):
         except Exception as e:
             logger.error(e)
             # don't print anything, a lot of garbage coming in usually, just drop the connection
-            raise
+            raise 
         #return None
 
     def dump_file(self, f):

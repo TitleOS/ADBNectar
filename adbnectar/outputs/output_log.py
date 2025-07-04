@@ -7,7 +7,10 @@ from ..config import CONFIG
 levels = {
         'debug': logging.DEBUG,
         'info': logging.INFO,
-        'error': logging.ERROR
+        'error': logging.ERROR,
+        'warning': logging.WARNING,
+        'critical': logging.CRITICAL,
+        'fatal': logging.FATAL,
         }
 
 class Output(object):
@@ -20,7 +23,7 @@ class Output(object):
         FORMATTER = logging.Formatter(FORMAT)
         logging.basicConfig(format=FORMAT)
         self.log_file = os.path.join(BASE, FILENAME)
-        self.logger = logging.getLogger('ADBHoneypot')
+        self.logger = logging.getLogger(CONFIG.get('honeypot', 'hostname'))
         self.logger.setLevel(LOG_LEVEL)
 
         if not os.path.exists(BASE):
@@ -40,3 +43,9 @@ class Output(object):
             self.logger.info(message)
         elif level is logging.ERROR:
             self.logger.error(message)
+        elif level is logging.WARNING:
+            self.logger.warning(message)
+        elif level is logging.CRITICAL:
+            self.logger.critical(message)
+        elif level is logging.FATAL:
+            self.logger.fatal(message)
