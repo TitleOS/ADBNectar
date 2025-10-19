@@ -58,7 +58,7 @@ class OutputLogger():
 
     def write(self, message):
         self.log_q.put(message)
-
+    
 logger = OutputLogger(log_q)
 
 
@@ -87,7 +87,7 @@ class UrlDownloader(threading.Thread):
             os.makedirs(DL_DIR) 
         while not download_q.empty() or self.process:
             try:
-                url, session = download_q.get(timeout=.1)
+                url, session = download_q.get(timeout=HTTP_TIMEOUT)
                 filename = os.path.basename(urlparse(url).path)
             except Queue.Empty:
                 continue
@@ -102,6 +102,8 @@ class UrlDownloader(threading.Thread):
                 continue
             sha256sum = hashlib.sha256(data).hexdigest()
             fn = '{}.raw'.format(sha256sum)
+            
+            #Don't overwrite the file if it already exists
             fp = os.path.join(DL_DIR, fn)
 
             logger.info('File downloaded: {}, name: {}, bytes: {}'.format(fp, filename, len(data)))
@@ -113,6 +115,8 @@ class UrlDownloader(threading.Thread):
                 "filename": filename,
                 "session" : session
             }
+            with open("manifest_" + filename + ".txt", "w+") as file_manifest:
+                file_manifest.write(str(obj))
             #Don't overwrite the file if it already exists
             if not os.path.exists(fp):
                 with open(fp, 'wb') as file_out:
@@ -120,7 +124,6 @@ class UrlDownloader(threading.Thread):
                     file_out.flush()
             #Report on downloaded file after write and close.
             self.report(obj)
-            
             if(USE_VT):
                 # If the key isn't defined in the config, check the environment variable.
                 VT_API_KEY = CONFIG.get('virustotal', 'api_key', fallback=os.environ.get('VIRUSTOTAL_API_KEY', None))
@@ -197,7 +200,7 @@ class ADBConnection(threading.Thread):
         obj['unixtime'] = int(time.time())
         obj['session'] = self.session
         obj['sensor'] = CONFIG.get('honeypot', 'hostname')
-        logger.debug("Placing {} on log_q".format(obj))
+        logger.debug("Placing " + str(obj) + " on log_q")
         logger.write(obj)
 
     def run(self):
@@ -375,7 +378,7 @@ class ADBConnection(threading.Thread):
 
         #command will be 'shell:cd /;wget http://someresource.com/test.sh\x00'
         #Remove first six chars and last null byte.
-        cmd = str(message.data[6:-1], "utf-8")
+        cmd = str(message.data[6:-1], "utf-8").split(":")[1]
         logger.info("shell command is {}, len {}".format(cmd, len(cmd)))
         if cmd in cmd_responses:
             response = cmd_responses[cmd]
@@ -500,7 +503,7 @@ class ADBConnection(threading.Thread):
                     self.send_message(protocol.CMD_OKAY, 2, message.arg0, '')
                 elif states[-1] == protocol.CMD_CLSE and not self.sending_binary:
                     logger.debug("Received close command, 1.")
-                    #self.send_message(protocol.CMD_CLSE, 2, message.arg0, '')
+                    self.send_message(protocol.CMD_CLSE, 2, message.arg0, '')
         duration = time.time() - start
         logger.info('{}\t{}\tconnection closed'.format(duration, self.addr[0]))
         obj = {
@@ -584,8 +587,8 @@ def main():
         CONFIG.set('honeypot', 'log_file', args.logfile)
     if args.jsonlog:
         CONFIG.set('output_json', 'log_file', args.jsonlog)
-    if args.sensor:
-        CONFIG.set('honeypot', 'hostname', args.sensor)
+    if args.hostname:
+        CONFIG.set('honeypot', 'hostname', args.hostname)
 
     output_writer = OutputWriter()
     output_writer.start()

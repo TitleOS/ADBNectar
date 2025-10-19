@@ -8,5 +8,5 @@ services:
       - 5555:5555
     volumes:
       - ./logs:/ADBNectar/logs
-      - ./dl:/ADBNectar/dl
+      - ./captured_samples:/captured_samples
       - ./ADBNectar.cfg:/etc/ADBNectar.cfg
